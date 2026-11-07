@@ -1,0 +1,306 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspección Lavaojos de Emergencia</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; padding: 15px; }
+    
+    .container { max-width: 600px; margin: 0 auto; }
+    
+    .header {
+      background: #4CAF50;
+      color: white; padding: 20px; border-radius: 12px;
+      text-align: center; margin-bottom: 20px;
+      border-bottom: 4px solid #1a1a1a;
+    }
+    .header img {
+      max-width: 120px; margin-bottom: 10px;
+    }
+    .header h1 { font-size: 1.3em; color: #ffffff; }
+    .header .ubicacion { font-size: 1.1em; margin-top: 8px; color: #ffffff; }
+
+    .card {
+      background: #ffffff; border-radius: 12px; padding: 18px;
+      margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-top: 3px solid #4CAF50;
+    }
+    .card h3 { color: #1a1a1a; margin-bottom: 12px; font-size: 0.95em; }
+
+    label { font-weight: 600; display: block; margin-bottom: 5px; color: #1a1a1a; }
+    
+    select, input, textarea {
+      width: 100%; padding: 10px; border: 1px solid #ccc;
+      border-radius: 8px; font-size: 0.95em; margin-bottom: 10px;
+      background: #ffffff;
+    }
+    select:focus, input:focus, textarea:focus { border-color: #4CAF50; outline: none; }
+
+    .pregunta-card {
+      background: #ffffff; border-radius: 10px; padding: 15px;
+      margin-bottom: 12px; border-left: 4px solid #4CAF50;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .pregunta-card p { font-weight: 600; margin-bottom: 10px; color: #1a1a1a; font-size: 0.9em; }
+
+    .radio-group { display: flex; gap: 15px; margin-bottom: 10px; }
+    .radio-group label {
+      display: flex; align-items: center; gap: 5px;
+      font-weight: normal; cursor: pointer;
+    }
+    .radio-group input[type="radio"] { width: auto; margin: 0; accent-color: #4CAF50; }
+
+    .cumple { color: #2e7d32; }
+    .no-cumple { color: #c62828; }
+
+    textarea { resize: vertical; min-height: 50px; }
+
+    .foto-btn {
+      background: #f0f0f0; color: #1a1a1a; border: 1px dashed #4CAF50;
+      padding: 12px; border-radius: 8px; cursor: pointer;
+      text-align: center; font-size: 0.95em; width: 100%;
+      display: block;
+    }
+    .foto-btn:hover { background: #e8f5e9; }
+    .foto-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; display: none; }
+
+    /* Firma */
+    .firma-container { text-align: center; }
+    #firmaCanvas {
+      border: 2px dashed #1a1a1a; border-radius: 10px;
+      width: 100%; height: 200px; cursor: crosshair;
+      touch-action: none; background: #ffffff;
+    }
+    .firma-btns { display: flex; gap: 10px; margin-top: 10px; justify-content: center; }
+    .btn-limpiar {
+      background: #1a1a1a; color: white; border: none;
+      padding: 8px 20px; border-radius: 8px; cursor: pointer;
+    }
+    .btn-limpiar:hover { background: #333; }
+
+    .btn-enviar {
+      background: #4CAF50;
+      color: white; border: none; padding: 15px;
+      border-radius: 12px; font-size: 1.1em; cursor: pointer;
+      width: 100%; font-weight: 600; margin-top: 10px;
+    }
+    .btn-enviar:hover { background: #43A047; }
+    .btn-enviar:disabled { background: #ccc; cursor: not-allowed; }
+
+    .success-msg {
+      display: none; background: #e8f5e9; color: #2e7d32;
+      padding: 20px; border-radius: 12px; text-align: center;
+      font-size: 1.1em; font-weight: 600;
+      border: 2px solid #4CAF50;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- HEADER CON LOGO -->
+  <div class="header">
+    <img src="Llogo.png" alt="Logo Torremolinos" onerror="this.style.display='none'">
+    <h1>🚿 INSPECCIÓN LAVAOJOS DE EMERGENCIA</h1>
+    <div class="ubicacion" id="ubicacionHeader">📍 Cargando ubicación...</div>
+  </div>
+
+  <form id="formInspeccion">
+    <!-- FECHA DE INSPECCIÓN -->
+    <div class="card">
+      <label>📅 Fecha de Inspección</label>
+      <input type="date" id="fechaInspeccion" required>
+    </div>
+
+    <!-- INSPECTOR -->
+    <div class="card">
+      <label>👤 ¿Quién diligencia la inspección?</label>
+      <select id="inspector" required>
+        <option value="">Seleccione inspector...</option>
+        <option value="Paula Patiño">Paula Patiño</option>
+        <option value="Andres Comba">Andrés Comba</option>
+        <option value="Angela Tijaro">Ángela Tijaro</option>
+      </select>
+    </div>
+
+    <!-- PREGUNTAS -->
+    <div id="preguntasContainer"></div>
+
+    <!-- FOTO GENERAL (UNA SOLA VEZ) -->
+    <div class="card">
+      <label>📷 Evidencia Fotográfica</label>
+      <label class="foto-btn" for="fotoGeneral">📷 Tomar / Adjuntar Foto</label>
+      <input type="file" accept="image/*" capture="environment" id="fotoGeneral" 
+             style="display:none" onchange="previsualizarFotoGeneral(this)">
+      <img class="foto-preview" id="previewGeneral">
+    </div>
+
+    <!-- FIRMA -->
+    <div class="card">
+      <div class="firma-container">
+        <label>✍️ Firma del Inspector</label>
+        <canvas id="firmaCanvas"></canvas>
+        <div class="firma-btns">
+          <button type="button" class="btn-limpiar" onclick="limpiarFirma()">🗑️ Limpiar Firma</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTÓN ENVIAR -->
+    <button type="submit" class="btn-enviar" id="btnEnviar">📤 Enviar Inspección</button>
+  </form>
+
+  <!-- MENSAJE ÉXITO -->
+  <div class="success-msg" id="successMsg">
+    ✅ ¡Inspección guardada exitosamente!
+  </div>
+</div>
+
+<script>
+  // ========== FECHA AUTOMÁTICA DE HOY ==========
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('fechaInspeccion').value = hoy;
+
+  // ========== PREGUNTAS ==========
+  const preguntas = [
+    "1. ¿Se encuentra el registro de cambio de agua mensual?",
+    "2. ¿Se encuentra señalizado?",
+    "3. ¿Está libre de obstáculos, es de fácil acceso?",
+    "4. ¿Se garantiza el flujo de agua continuo?",
+    "5. ¿La presión del agua es regulada y segura para los ojos?",
+    "6. ¿Las normas de uso están publicadas?",
+    "7. ¿Se encuentra en buen estado y funcionando?",
+    "8. ¿Las tapas/placas del mecanismo funcionan correctamente?",
+    "9. ¿Los buzos/cuartos con protectores están limpios?",
+    "10. ¿Los tubos, empaques y conexiones presentan fuga?",
+    "11. ¿La estructura presenta deterioro?"
+  ];
+
+  // ========== OBTENER UBICACIÓN DEL QR ==========
+  const params = new URLSearchParams(window.location.search);
+  const ubicacion = params.get('ubicacion') || 'Sin ubicación';
+  document.getElementById('ubicacionHeader').textContent = '📍 ' + ubicacion;
+
+  // ========== GENERAR PREGUNTAS ==========
+  const container = document.getElementById('preguntasContainer');
+
+  preguntas.forEach((pregunta, index) => {
+    const div = document.createElement('div');
+    div.className = 'pregunta-card';
+    div.innerHTML = `
+      <p>${pregunta}</p>
+      <div class="radio-group">
+        <label class="cumple">
+          <input type="radio" name="cumple_${index}" value="Cumple" required> ✅ Cumple
+        </label>
+        <label class="no-cumple">
+          <input type="radio" name="cumple_${index}" value="No Cumple"> ❌ No Cumple
+        </label>
+      </div>
+      <textarea placeholder="Observación (opcional)..." id="obs_${index}"></textarea>
+    `;
+    container.appendChild(div);
+  });
+
+  // ========== PREVISUALIZAR FOTO GENERAL ==========
+  function previsualizarFotoGeneral(input) {
+    const preview = document.getElementById('previewGeneral');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  // ========== FIRMA DIGITAL ==========
+  const canvas = document.getElementById('firmaCanvas');
+  const ctx = canvas.getContext('2d');
+  let firmando = false;
+
+  function ajustarCanvas() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 200;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+  }
+  ajustarCanvas();
+  window.addEventListener('resize', ajustarCanvas);
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+  }
+
+  canvas.addEventListener('mousedown', (e) => { firmando = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
+  canvas.addEventListener('mousemove', (e) => { if (firmando) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } });
+  canvas.addEventListener('mouseup', () => firmando = false);
+
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); firmando = true; ctx.beginPath(); ctx.moveTo(getPos(e).x, getPos(e).y); });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (firmando) { ctx.lineTo(getPos(e).x, getPos(e).y); ctx.stroke(); } });
+  canvas.addEventListener('touchend', () => firmando = false);
+
+  function limpiarFirma() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // ========== ENVIAR FORMULARIO ==========
+  document.getElementById('formInspeccion').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnEnviar');
+    btn.disabled = true;
+    btn.textContent = '⏳ Enviando...';
+
+    const previewGeneral = document.getElementById('previewGeneral');
+
+    const datosPreguntas = preguntas.map((pregunta, index) => {
+      const cumple = document.querySelector(`input[name="cumple_${index}"]:checked`);
+      return {
+        pregunta: pregunta,
+        cumple: cumple ? cumple.value : '',
+        observacion: document.getElementById('obs_' + index).value
+      };
+    });
+
+    const datos = {
+      ubicacion: ubicacion,
+      inspector: document.getElementById('inspector').value,
+      fecha: document.getElementById('fechaInspeccion').value,
+      firma: canvas.toDataURL(),
+      foto: previewGeneral.src || '',
+      preguntas: datosPreguntas
+    };
+
+    try {
+      const response = await fetch('/api/lavaojos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      });
+
+      if (response.ok) {
+        document.getElementById('formInspeccion').style.display = 'none';
+        document.getElementById('successMsg').style.display = 'block';
+      } else {
+        alert('❌ Error al guardar. Intenta de nuevo.');
+        btn.disabled = false;
+        btn.textContent = '📤 Enviar Inspección';
+      }
+    } catch (error) {
+      alert('❌ Error de conexión. Verifica tu internet.');
+      btn.disabled = false;
+      btn.textContent = '📤 Enviar Inspección';
+    }
+  });
+</script>
+
+</body>
+</html>
+

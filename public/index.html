@@ -1,0 +1,196 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Apps - Panel de Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; padding: 20px 30px; text-align: center;
+    }
+    .header h1 { font-size: 24px; }
+    .header p { opacity: 0.8; margin-top: 5px; }
+    .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .module-selector {
+      background: white; border-radius: 10px; padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+    }
+    .module-selector h2 { margin-bottom: 15px; font-size: 18px; }
+    .modules-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .module-btn {
+      padding: 12px; border: 2px solid #667eea; border-radius: 8px;
+      background: white; cursor: pointer; font-size: 14px;
+      transition: all 0.3s; text-align: center;
+    }
+    .module-btn:hover, .module-btn.active {
+      background: #667eea; color: white;
+    }
+    .form-section {
+      background: white; border-radius: 10px; padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+      display: none;
+    }
+    .form-section.visible { display: block; }
+    .form-section h2 { margin-bottom: 15px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 10px; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 14px;
+    }
+    .btn-generate {
+      background: #667eea; color: white; border: none;
+      padding: 12px 30px; border-radius: 8px; font-size: 16px;
+      cursor: pointer; width: 100%;
+    }
+    .btn-generate:hover { background: #5a6fd6; }
+    .qr-result {
+      text-align: center; margin-top: 20px; padding: 20px;
+      background: #f8f9fa; border-radius: 10px; display: none;
+    }
+    .qr-result img { max-width: 200px; margin: 10px 0; }
+    .qr-list { margin-top: 10px; }
+    .qr-item {
+      background: white; border-radius: 8px; padding: 15px;
+      margin-bottom: 10px; box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      display: flex; align-items: center; gap: 15px;
+    }
+    .qr-item img { width: 80px; height: 80px; }
+    .qr-item-info h3 { font-size: 16px; }
+    .qr-item-info p { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>QR Apps - Panel de Control</h1>
+    <p>Gestiona tus aplicaciones de codigos QR</p>
+  </div>
+  <div class="container">
+    <div class="module-selector">
+      <h2>Selecciona un modulo:</h2>
+      <div class="modules-grid" id="modulesGrid">
+        <button class="module-btn" data-module="inventario">Inventario</button>
+        <button class="module-btn" data-module="empleados">Empleados</button>
+        <button class="module-btn" data-module="productos">Productos</button>
+      </div>
+    </div>
+    <div class="form-section" id="formSection">
+      <h2 id="formTitle">Crear QR</h2>
+      <form id="qrForm">
+        <div id="dynamicFields"></div>
+        <button type="submit" class="btn-generate">Generar Codigo QR</button>
+      </form>
+      <div class="qr-result" id="qrResult">
+        <h3>QR Generado!</h3>
+        <img id="qrImage" src="" alt="QR Code">
+        <p id="qrInfo"></p>
+      </div>
+    </div>
+    <div class="form-section" id="listSection">
+      <h2>QR Generados: <span id="listTitle"></span></h2>
+      <div class="qr-list" id="qrList"></div>
+    </div>
+  </div>
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    const moduleFields = {
+      inventario: [
+        { name: 'nombreProducto', label: 'Nombre del Producto', type: 'text' },
+        { name: 'cantidad', label: 'Cantidad', type: 'number' },
+        { name: 'ubicacion', label: 'Ubicacion', type: 'text' },
+        { name: 'precio', label: 'Precio', type: 'number' }
+      ],
+      empleados: [
+        { name: 'nombre', label: 'Nombre Completo', type: 'text' },
+        { name: 'cedula', label: 'Cedula', type: 'text' },
+        { name: 'cargo', label: 'Cargo', type: 'text' },
+        { name: 'departamento', label: 'Departamento', type: 'text' },
+        { name: 'telefono', label: 'Telefono', type: 'text' }
+      ],
+      productos: [
+        { name: 'nombre', label: 'Nombre', type: 'text' },
+        { name: 'referencia', label: 'Referencia', type: 'text' },
+        { name: 'categoria', label: 'Categoria', type: 'text' },
+        { name: 'precio', label: 'Precio', type: 'number' },
+        { name: 'descripcion', label: 'Descripcion', type: 'text' }
+      ]
+    };
+    let currentModule = null;
+    document.querySelectorAll('.module-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.module-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentModule = btn.dataset.module;
+        loadForm(currentModule);
+        loadList(currentModule);
+      });
+    });
+    function loadForm(module) {
+      const fields = moduleFields[module];
+      if (!fields) return;
+      document.getElementById('formTitle').textContent = 'Crear QR - ' + module.toUpperCase();
+      const container = document.getElementById('dynamicFields');
+      container.innerHTML = '';
+      fields.forEach(field => {
+        container.innerHTML += '<div class="form-group"><label>' + field.label + ':</label><input type="' + field.type + '" name="' + field.name + '" required></div>';
+      });
+      document.getElementById('formSection').classList.add('visible');
+      document.getElementById('qrResult').style.display = 'none';
+    }
+    document.getElementById('qrForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+      try {
+        const res = await fetch(API_BASE + '/app0' + getModuleNumber(currentModule) + '-' + currentModule + '/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+          document.getElementById('qrImage').src = result.data.qrImage;
+          document.getElementById('qrInfo').textContent = result.data.title;
+          document.getElementById('qrResult').style.display = 'block';
+          loadList(currentModule);
+          e.target.reset();
+        }
+      } catch (error) {
+        alert('Error al generar QR: ' + error.message);
+      }
+    });
+    function getModuleNumber(module) {
+      const numbers = { inventario: '1', empleados: '2', productos: '3' };
+      return numbers[module] || '1';
+    }
+    async function loadList(module) {
+      try {
+        const num = getModuleNumber(module);
+        const res = await fetch(API_BASE + '/app0' + num + '-' + module + '/listar');
+        const result = await res.json();
+        document.getElementById('listTitle').textContent = module.toUpperCase();
+        const list = document.getElementById('qrList');
+        list.innerHTML = '';
+        if (result.data && result.data.length > 0) {
+          result.data.forEach(qr => {
+            list.innerHTML += '<div class="qr-item"><img src="' + qr.qrImage + '" alt="QR"><div class="qr-item-info"><h3>' + qr.title + '</h3><p>Creado: ' + new Date(qr.createdAt).toLocaleDateString('es-CO') + '</p></div></div>';
+          });
+        } else {
+          list.innerHTML = '<p>No hay QR generados aun para este modulo.</p>';
+        }
+        document.getElementById('listSection').classList.add('visible');
+      } catch (error) {
+        console.log('Modulo aun no disponible');
+      }
+    }
+  </script>
+</body>
+</html>
+
